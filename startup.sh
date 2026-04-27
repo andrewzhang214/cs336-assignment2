@@ -18,6 +18,6 @@ git config --global user.email "andrewzhang214@gmail.com"
 
 # Github credentials
 mkdir -p /root/.ssh
-cp -r /workspace/.ssh/ /root/.ssh/
+cp -r /workspace/.ssh/ /root/
 chmod 700 /root/.ssh
 chmod 600 /root/.ssh/id_ed25519

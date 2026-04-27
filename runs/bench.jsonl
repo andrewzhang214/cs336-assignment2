@@ -1,0 +1,8 @@
+{"model_size": "small", "batch_size": 4, "vocab_size": 10000, "context_length": 128, "mode": "forward", "num_warmup_steps": 5, "num_measure_steps": 10, "mean_ms": "0.011", "std_ms": "0.000", "device": "cuda"}
+{"model_size": "small", "batch_size": 4, "vocab_size": 10000, "context_length": 128, "mode": "backward", "num_warmup_steps": 5, "num_measure_steps": 10, "mean_ms": "0.008", "std_ms": "0.000", "device": "cuda"}
+{"model_size": "medium", "batch_size": 4, "vocab_size": 10000, "context_length": 128, "mode": "forward", "num_warmup_steps": 5, "num_measure_steps": 10, "mean_ms": "0.027", "std_ms": "0.000", "device": "cuda"}
+{"model_size": "medium", "batch_size": 4, "vocab_size": 10000, "context_length": 128, "mode": "backward", "num_warmup_steps": 5, "num_measure_steps": 10, "mean_ms": "0.015", "std_ms": "0.000", "device": "cuda"}
+{"model_size": "large", "batch_size": 4, "vocab_size": 10000, "context_length": 128, "mode": "forward", "num_warmup_steps": 5, "num_measure_steps": 10, "mean_ms": "0.075", "std_ms": "0.000", "device": "cuda"}
+{"model_size": "large", "batch_size": 4, "vocab_size": 10000, "context_length": 128, "mode": "backward", "num_warmup_steps": 5, "num_measure_steps": 10, "mean_ms": "0.022", "std_ms": "0.000", "device": "cuda"}
+{"model_size": "xl", "batch_size": 4, "vocab_size": 10000, "context_length": 128, "mode": "forward", "num_warmup_steps": 5, "num_measure_steps": 10, "mean_ms": "0.150", "std_ms": "0.000", "device": "cuda"}
+{"model_size": "xl", "batch_size": 4, "vocab_size": 10000, "context_length": 128, "mode": "backward", "num_warmup_steps": 5, "num_measure_steps": 10, "mean_ms": "0.044", "std_ms": "0.000", "device": "cuda"}
