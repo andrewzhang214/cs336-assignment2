@@ -4,6 +4,10 @@
 # Install uv and setup
 curl -Ls https://astral.sh/uv/install.sh | sh
 source ~/.bashrc
+
+export UV_CACHE_DIR=/workspace/.uv-cache 
+export UV_LINK_MODE=copy 
+cd /workspace/cs336-assignment2
 uv sync
 
 
