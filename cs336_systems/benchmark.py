@@ -129,6 +129,8 @@ def run_one_setting(args, reporter: BenchmarkReporter, device: torch.device):
         print(f"OOM Error for model size: {args.model_size}")
         emit_row(args, reporter, "forward", device, np.nan, np.nan)
         emit_row(args, reporter, "backward", device, np.nan, np.nan)
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
 
 
 def run_sweep(args, reporter: BenchmarkReporter, device: torch.device):
