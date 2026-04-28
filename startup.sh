@@ -3,8 +3,6 @@
 
 # Install uv and setup
 
-mkdir -p /workspace/bin
-
 curl -Ls https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/workspace sh
 
 grep -qxF 'export PATH="/workspace/bin:$PATH"' /root/.bashrc || \
