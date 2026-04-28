@@ -127,8 +127,8 @@ def run_one_setting(args, reporter: BenchmarkReporter, device: torch.device):
 
     except torch.OutOfMemoryError:
         print(f"OOM Error for model size: {args.model_size}")
-        emit_row(args, reporter, "forward", device, "nan", "nan")
-        emit_row(args, reporter, "backward", device, "nan", "nan")
+        emit_row(args, reporter, "forward", device, np.nan, np.nan)
+        emit_row(args, reporter, "backward", device, np.nan, np.nan)
 
 
 def run_sweep(args, reporter: BenchmarkReporter, device: torch.device):
