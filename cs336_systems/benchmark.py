@@ -110,21 +110,25 @@ def emit_row(args, reporter: BenchmarkReporter, mode: str, device: torch.device,
 
 def run_one_setting(args, reporter: BenchmarkReporter, device: torch.device):
 
+    try:
+        # Run measurements and collect times
+        f_times, b_times = run_benchmark_split(args, device)
+        
 
-    # Run measurements and collect times
-    f_times, b_times = run_benchmark_split(args, device)
-    
+        # Perform statistical analysis
+        f_times = np.array(f_times)
+        b_times = np.array(b_times)
+        f_avg, f_std = np.mean(f_times), np.std(f_times)
+        b_avg, b_std = np.mean(b_times), np.std(b_times)
 
-    # Perform statistical analysis
-    f_times = np.array(f_times)
-    b_times = np.array(b_times)
-    f_avg, f_std = np.mean(f_times), np.std(f_times)
-    b_avg, b_std = np.mean(b_times), np.std(b_times)
+        # Log the benchmark results with reporter
+        emit_row(args, reporter, "forward", device, f_avg, f_std)
+        emit_row(args, reporter, "backward", device, b_avg, b_std)
 
-    # Log the benchmark results with reporter
-    emit_row(args, reporter, "forward", device, f_avg, f_std)
-    emit_row(args, reporter, "backward", device, b_avg, b_std)
-
+    except torch.OutOfMemoryError:
+        print(f"OOM Error for model size: {args.model_size}")
+        emit_row(args, reporter, "forward", device, "nan", "nan")
+        emit_row(args, reporter, "backward", device, "nan", "nan")
 
 
 def run_sweep(args, reporter: BenchmarkReporter, device: torch.device):
