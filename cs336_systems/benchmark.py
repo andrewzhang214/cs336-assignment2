@@ -19,6 +19,7 @@ import numpy as np
 import torch
 import torch.cuda.nvtx as nvtx
 
+from cs336_basics.optimizer import AdamW
 from cs336_basics.model import BasicsTransformerLM
 from cs336_systems.utils import BenchmarkReporter, BenchmarkRow
 
@@ -45,6 +46,11 @@ def create_model(args, device: torch.device):
     ).to(device)
     model.train()
     return model
+
+
+def create_optimizer(model: BasicsTransformerLM):
+    optim = AdamW(params=model.parameters())
+    return optim
 
 
 @contextmanager
@@ -83,9 +89,9 @@ def run_benchmark_split(args, device: torch.device):
 
     model = create_model(args, device)
 
-    # Dummy optimizer
-    optim = torch.optim.AdamW(model.parameters(), lr=1e-4)
 
+    # Dummy optimizer
+    optim = create_optimizer(model)
     # Get batched data
     x = torch.randint(
         low=0, high=args.vocab_size,
