@@ -31,6 +31,21 @@ MODEL_SPECS = {
     "2.7B":     dict(d_model=2560, d_ff=10240, num_layers=32, num_heads=32),
 }
 
+def create_model(args, device: torch.device):
+    # Create model
+    model_params = MODEL_SPECS[args.model_size]
+    model = BasicsTransformerLM(
+        vocab_size=args.vocab_size,
+        context_length=args.context_length,
+        d_model=model_params["d_model"],
+        num_layers=model_params["num_layers"],
+        num_heads=model_params["num_heads"],
+        d_ff=model_params["d_ff"],
+        rope_theta=args.rope_theta
+    ).to(device)
+    model.train()
+    return model
+
 
 @contextmanager
 def nvtx_range(name: str):
@@ -65,18 +80,8 @@ def measure_forward_backward(model: BasicsTransformerLM, optim: torch.optim.Adam
 
 
 def run_benchmark_split(args, device: torch.device):
-    # Create model
-    model_params = MODEL_SPECS[args.model_size]
-    model = BasicsTransformerLM(
-        vocab_size=args.vocab_size,
-        context_length=args.context_length,
-        d_model=model_params["d_model"],
-        num_layers=model_params["num_layers"],
-        num_heads=model_params["num_heads"],
-        d_ff=model_params["d_ff"],
-        rope_theta=args.rope_theta
-    ).to(device)
-    model.train()
+
+    model = create_model(args, device)
 
     # Dummy optimizer
     optim = torch.optim.AdamW(model.parameters(), lr=1e-4)
@@ -161,6 +166,24 @@ def run_sweep(args, reporter: BenchmarkReporter, device: torch.device):
             run_one_setting(args, reporter, device)
 
 
+def run_profile_workload(args, device: torch.device):
+    """
+    Run profiling on a full training step
+    """
+
+    # Forward Step
+
+
+    # Backward Step
+
+
+    # Optimizer Step
+
+
+
+    pass
+
+
 def main():
 
     # Parse arguments from cml
@@ -191,6 +214,9 @@ def main():
     parser.add_argument('--out_jsonl', type=str, default=None)
     parser.add_argument('--out_md', type=str, default=None)
 
+    # NVTX
+    parser.add_argument('--profile', action="store_true")
+
     args = parser.parse_args()
  
 
@@ -202,6 +228,9 @@ def main():
 
     # Reporter
     reporter = BenchmarkReporter(args.out_jsonl, args.out_md)
+
+    if args.profile:
+        run_profile_workload(args, device)
 
     if args.sweep:
         run_sweep(args, reporter, device)
