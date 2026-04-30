@@ -53,6 +53,20 @@ def create_optimizer(model: BasicsTransformerLM):
     return optim
 
 
+def create_dummy_data(args, device: torch.device):
+    x = torch.randint(
+        low=0, high=args.vocab_size,
+        size=(args.batch_size, args.context_length),
+        device=device
+    )
+    y = torch.randint(
+        low=0, high=args.vocab_size,
+        size=(args.batch_size, args.context_length),
+        device=device
+    )
+    return x, y
+
+
 @contextmanager
 def nvtx_range(name: str):
     nvtx.range_push(name)
@@ -88,10 +102,9 @@ def measure_forward_backward(model: BasicsTransformerLM, optim: torch.optim.Adam
 def run_benchmark_split(args, device: torch.device):
 
     model = create_model(args, device)
-
-
-    # Dummy optimizer
     optim = create_optimizer(model)
+    x, y = create_dummy_data(args, device)
+    
     # Get batched data
     x = torch.randint(
         low=0, high=args.vocab_size,
