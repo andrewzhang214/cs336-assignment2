@@ -76,7 +76,7 @@ def nvtx_range(name: str):
         nvtx.range_pop()
 
 
-def measure_forward_backward(model: BasicsTransformerLM, optim: torch.optim.AdamW, x: torch.Tensor, y: torch.Tensor):
+def measure_forward_backward(model: BasicsTransformerLM, optim: AdamW, x: torch.Tensor, y: torch.Tensor):
 
     t0 = time.perf_counter()
 
@@ -105,17 +105,6 @@ def run_benchmark_split(args, device: torch.device):
     optim = create_optimizer(model)
     x, y = create_dummy_data(args, device)
     
-    # Get batched data
-    x = torch.randint(
-        low=0, high=args.vocab_size,
-        size=(args.batch_size, args.context_length),
-        device=device
-    )
-    y = torch.randint(
-        low=0, high=args.vocab_size,
-        size=(args.batch_size, args.context_length),
-        device=device
-    )
 
     with nvtx_range("benchmark"):
         # Warmup Steps
