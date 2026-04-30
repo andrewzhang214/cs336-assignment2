@@ -12,10 +12,12 @@ a better default for benchmarking than time.time()).
 """
 
 import argparse
+from contextlib import contextmanager
 import time
 
 import numpy as np
 import torch
+import torch.cuda.nvtx as nvtx
 
 from cs336_basics.model import BasicsTransformerLM
 from cs336_systems.utils import BenchmarkReporter, BenchmarkRow
@@ -30,17 +32,30 @@ MODEL_SPECS = {
 }
 
 
+@contextmanager
+def nvtx_range(name: str):
+    nvtx.range_push(name)
+    try:
+        yield
+    finally:
+        nvtx.range_pop()
+
+
 def measure_forward_backward(model: BasicsTransformerLM, optim: torch.optim.AdamW, x: torch.Tensor, y: torch.Tensor):
 
     t0 = time.perf_counter()
-    logits = model(x)
+
+    with nvtx_range("forward"):
+        logits = model(x)
+        loss = torch.nn.functional.cross_entropy(
+            input=logits.reshape(-1, logits.size(-1)),
+            target=y.reshape(-1)
+        )
     t1 = time.perf_counter()
-    loss = torch.nn.functional.cross_entropy(
-        input=logits.reshape(-1, logits.size(-1)),
-        target=y.reshape(-1)
-    )
-    optim.zero_grad(set_to_none=True)
-    loss.backward()
+
+    with nvtx_range("backward"):
+        optim.zero_grad(set_to_none=True)
+        loss.backward()
     t2 = time.perf_counter()
 
     if torch.cuda.is_available():
@@ -78,16 +93,21 @@ def run_benchmark_split(args, device: torch.device):
         device=device
     )
 
-    # Warmup Steps
-    for _ in range(args.num_warmup_steps):
-        measure_forward_backward(model, optim, x, y)
-    
-    # Run performance
-    f_times, b_times = [], []
-    for _ in range(args.num_measure_steps):
-        f_time, b_time = measure_forward_backward(model, optim, x, y)
-        f_times.append(f_time)
-        b_times.append(b_time)
+    with nvtx_range("benchmark"):
+        # Warmup Steps
+        with nvtx_range("warmup"):
+            for _ in range(args.num_warmup_steps):
+                with nvtx_range("step"):
+                    measure_forward_backward(model, optim, x, y)
+            
+        # Run performance
+        f_times, b_times = [], []
+        with nvtx_range("measure"):
+            for _ in range(args.num_measure_steps):
+                with nvtx_range("step"):
+                    f_time, b_time = measure_forward_backward(model, optim, x, y)
+            f_times.append(f_time)
+            b_times.append(b_time)
     return f_times, b_times
 
 
@@ -135,8 +155,10 @@ def run_one_setting(args, reporter: BenchmarkReporter, device: torch.device):
 
 def run_sweep(args, reporter: BenchmarkReporter, device: torch.device):
     for model_size in args.sweep_models.split(','):
-        args.model_size = model_size
-        run_one_setting(args, reporter, device)
+        for context_length in args.sweep_contexts.split(','):
+            args.model_size = model_size
+            args.context_length = context_length
+            run_one_setting(args, reporter, device)
 
 
 def main():
@@ -171,8 +193,6 @@ def main():
 
     args = parser.parse_args()
  
-    if args.out_jsonl is None:
-        args.out_jsonl = f"run-{time.strftime('%Y%m%d_%H%M%S')}"
 
     torch.manual_seed(args.seed)
 
