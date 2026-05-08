@@ -37,6 +37,6 @@ uv run nsys profile -o result python benchmark.py \
     --out_jsonl="runs/nsys_profile.jsonl" \
     --out_md="runs/nsys_profile.md" \
     --sweep \
-    --sweep_models="small"
-    --sweep_contexts="128"
-    --num_warmup_steps=1 \
+    --sweep_models="small" \
+    --sweep_contexts="128" \
+    --num_warmup_steps=5 \

@@ -19,9 +19,14 @@ import numpy as np
 import torch
 import torch.cuda.nvtx as nvtx
 
+import cs336_basics.model
+from cs336_basics.model import annotated_scaled_dot_product_attention
 from cs336_basics.optimizer import AdamW
 from cs336_basics.model import BasicsTransformerLM
 from cs336_systems.utils import BenchmarkReporter, BenchmarkRow
+
+cs336_basics.model.scaled_dot_product_attention = annotated_scaled_dot_product_attention
+
 
 
 MODEL_SPECS = {
@@ -81,6 +86,7 @@ def measure_forward_backward(model: BasicsTransformerLM, optim: AdamW, x: torch.
     t0 = time.perf_counter()
 
     with nvtx_range("forward"):
+        model.zero_grad(set_to_none=True)
         logits = model(x)
         loss = torch.nn.functional.cross_entropy(
             input=logits.reshape(-1, logits.size(-1)),
@@ -89,7 +95,6 @@ def measure_forward_backward(model: BasicsTransformerLM, optim: AdamW, x: torch.
     t1 = time.perf_counter()
 
     with nvtx_range("backward"):
-        optim.zero_grad(set_to_none=True)
         loss.backward()
     t2 = time.perf_counter()
 
@@ -179,17 +184,49 @@ def run_profile_workload(args, device: torch.device):
     Run profiling on a full training step
     """
 
-    # Forward Step
+    model = create_model(args, device)
+    optim = create_optimizer(model)
+    x, y = create_dummy_data(args, device)
+
+    # Warmup steps
+    with nvtx_range("warmup"):
+        for _ in range(args.num_warmup_steps):
+            with nvtx_range("step"):
+                model.zero_grad(set_to_none=True)
+                logits = model(x)
+            
+            with nvtx_range("loss"):
+                loss = torch.nn.functional.cross_entropy(
+                    input=logits.reshape(-1, logits.size(-1)),
+                    target=y.reshape(-1)
+                )
+            
+            with nvtx_range("backward"):
+                loss.backward()
+
+            with nvtx_range("optim_step"):
+                optim.step()
+
+    # Profile steps
+    with nvtx_range("measure"):
+        for _ in range(args.num_measure_steps):
+            with nvtx_range("step"):
+                model.zero_grad(set_to_none=True)
+                logits = model(x)
+            
+            with nvtx_range("loss"):
+                loss = torch.nn.functional.cross_entropy(
+                    input=logits.reshape(-1, logits.size(-1)),
+                    target=y.reshape(-1)
+                )
+            
+            with nvtx_range("backward"):
+                loss.backward()
+
+            with nvtx_range("optim_step"):
+                optim.step()
 
 
-    # Backward Step
-
-
-    # Optimizer Step
-
-
-
-    pass
 
 
 def main():
@@ -240,7 +277,7 @@ def main():
     if args.profile:
         run_profile_workload(args, device)
 
-    if args.sweep:
+    elif args.sweep:
         run_sweep(args, reporter, device)
 
     else:
