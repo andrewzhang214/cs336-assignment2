@@ -24,8 +24,14 @@ for MODEL in "${MODELS[@]}"; do
 
     uv run nsys profile \
         -o result "${OUT_DIR}/${OUT_NAME}" \
+        --force-overwrite=true \
+        --trace=cuda,nvtx \
+        --sample=none \
+        --cpuctxsw=none \
+        python cs336_systems/benchmark.py \
         
-        python benchmark.py \
+        --model-size ${MODEL} \
+        --context-length ${CONTEXT_LENGTH} \
             --out_jsonl="runs/nsys_profile.jsonl" \
             --out_md="runs/nsys_profile.md" \
             --model_size=${}
