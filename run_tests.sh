@@ -33,10 +33,13 @@ clear
 
 # 2a
 
-uv run nsys profile -o result python benchmark.py \
-    --out_jsonl="runs/nsys_profile.jsonl" \
-    --out_md="runs/nsys_profile.md" \
-    --sweep \
-    --sweep_models="small" \
-    --sweep_contexts="128" \
-    --num_warmup_steps=5 \
+bash scripts/profile_nsys_models.sh
+
+
+# uv run nsys profile -o result python benchmark.py \
+#     --out_jsonl="runs/nsys_profile.jsonl" \
+#     --out_md="runs/nsys_profile.md" \
+#     --sweep \
+#     --sweep_models="small" \
+#     --sweep_contexts="128,256,512,1024" \
+#     --num_warmup_steps=5 \
