@@ -129,7 +129,7 @@ def run_benchmark_split(args, device: torch.device):
     return f_times, b_times
 
 
-def emit_row(args, reporter: BenchmarkReporter, mode: str, device: torch.device, avg_time, std_time, f=".3f"):
+def emit_row(args, reporter, mode: str, device: torch.device, avg_time, std_time, f=".3f"):
     row = BenchmarkRow(
         model_size=args.model_size,
         batch_size=args.batch_size,
@@ -142,11 +142,11 @@ def emit_row(args, reporter: BenchmarkReporter, mode: str, device: torch.device,
         std_ms=format(std_time, f),
         device=str(device)
     )
+    if reporter is not None:
+        reporter.append(row)
 
-    reporter.append(row)
 
-
-def run_one_setting(args, reporter: BenchmarkReporter, device: torch.device):
+def run_one_setting(args, reporter, device: torch.device):
 
     try:
         # Run measurements and collect times
@@ -171,7 +171,7 @@ def run_one_setting(args, reporter: BenchmarkReporter, device: torch.device):
             torch.cuda.empty_cache()
 
 
-def run_sweep(args, reporter: BenchmarkReporter, device: torch.device):
+def run_sweep(args, reporter, device: torch.device):
     for model_size in args.sweep_models.split(','):
         for context_length in args.sweep_contexts.split(','):
             args.model_size = model_size
@@ -191,25 +191,35 @@ def run_profile_workload(args, device: torch.device):
     # Warmup steps
     with nvtx_range("warmup"):
         for _ in range(args.num_warmup_steps):
-            with nvtx_range("step"):
-                model.zero_grad(set_to_none=True)
-                logits = model(x)
-            
-            with nvtx_range("loss"):
-                loss = torch.nn.functional.cross_entropy(
-                    input=logits.reshape(-1, logits.size(-1)),
-                    target=y.reshape(-1)
-                )
-            
-            with nvtx_range("backward"):
-                loss.backward()
+            if args.profile_mode == "inference":
+                with nvtx_range("step"):
+                    logits = model(x)
+            else:
+                with nvtx_range("step"):
+                    model.zero_grad(set_to_none=True)
+                    logits = model(x)
+                
+                with nvtx_range("loss"):
+                    loss = torch.nn.functional.cross_entropy(
+                        input=logits.reshape(-1, logits.size(-1)),
+                        target=y.reshape(-1)
+                    )
+                
+                with nvtx_range("backward"):
+                    loss.backward()
 
-            with nvtx_range("optim_step"):
-                optim.step()
+                with nvtx_range("optim_step"):
+                    optim.step()
+
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
 
     # Profile steps
-    with nvtx_range("measure"):
-        for _ in range(args.num_measure_steps):
+    for _ in range(args.profile_steps):
+        if args.profile_mode == "inference":
+            with nvtx_range("step"):
+                logits = model(x)
+        else:
             with nvtx_range("step"):
                 model.zero_grad(set_to_none=True)
                 logits = model(x)
@@ -225,6 +235,9 @@ def run_profile_workload(args, device: torch.device):
 
             with nvtx_range("optim_step"):
                 optim.step()
+                
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
 
 
 
@@ -261,6 +274,8 @@ def main():
 
     # NVTX
     parser.add_argument('--profile', action="store_true")
+    parser.add_argument('--profile_mode', choices=['inference', 'train'], default='inference')
+    parser.add_argument('--profile_steps', type=int, default=1)
 
     args = parser.parse_args()
  
@@ -272,7 +287,10 @@ def main():
 
 
     # Reporter
-    reporter = BenchmarkReporter(args.out_jsonl, args.out_md)
+    reporter = None
+    if args.out_jsonl:
+        reporter = BenchmarkReporter(args.out_jsonl, args.out_md)
+
 
     if args.profile:
         run_profile_workload(args, device)
@@ -285,7 +303,8 @@ def main():
 
     
     # Render result to md file
-    reporter.render_markdown()
+    if reporter is not None:
+        reporter.render_markdown()
 
 
 

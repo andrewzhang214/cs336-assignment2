@@ -33,13 +33,33 @@ clear
 
 # 2a
 
-bash scripts/profile_nsys_models.sh
+bash scripts/profile_nsys_systems.sh
 
 
-# uv run nsys profile -o result python benchmark.py \
-#     --out_jsonl="runs/nsys_profile.jsonl" \
-#     --out_md="runs/nsys_profile.md" \
-#     --sweep \
-#     --sweep_models="small" \
-#     --sweep_contexts="128,256,512,1024" \
-#     --num_warmup_steps=5 \
+# 2d 
+
+# Forward only
+
+uv run nsys profile -o 
+    -o "runs/nsys_d_infer_large_s128" \
+    --force-overwrite=true \
+    --trace=cuda,nvtx \
+    --sample=none \
+    --cpuctxsw=none \
+    result python benchmark.py \
+        --model_size="large" --context_length=128 \
+        --profile --profile_mode="inference"
+
+# Full train step
+uv run nsys profile -o 
+    -o "runs/nsys_d_infer_large_s128" \
+    --force-overwrite=true \
+    --trace=cuda,nvtx \
+    --sample=none \
+    --cpuctxsw=none \
+    result python benchmark.py \
+        --model_size="large" --context_length=128 \
+        --profile --profile_mode="train"
+
+
+# 2e
