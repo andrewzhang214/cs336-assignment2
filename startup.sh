@@ -19,6 +19,7 @@ uv sync
 # Git configurations
 git config --global user.name "Andrew Zhang"
 git config --global user.email "andrewzhang214@gmail.com"
+git pull
 
 
 # Github credentials
