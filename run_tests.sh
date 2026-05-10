@@ -52,7 +52,7 @@ uv run nsys profile -o
 
 # Full train step
 uv run nsys profile -o 
-    -o "runs/nsys_d_infer_large_s128" \
+    -o "runs/nsys_d_train_large_s128" \
     --force-overwrite=true \
     --trace=cuda,nvtx \
     --sample=none \
@@ -61,5 +61,13 @@ uv run nsys profile -o
         --model_size="large" --context_length=128 \
         --profile --profile_mode="train"
 
-
-# 2e
+# 2e Profile attention
+uv run nsys profile -o 
+    -o "runs/nsys_e_attn_large_s128" \
+    --force-overwrite=true \
+    --trace=cuda,nvtx \
+    --sample=none \
+    --cpuctxsw=none \
+    result python benchmark.py \
+        --model_size="large" --context_length=128 \
+        --profile --profile_mode="inference" --nvtx_attention

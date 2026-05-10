@@ -19,13 +19,10 @@ import numpy as np
 import torch
 import torch.cuda.nvtx as nvtx
 
-import cs336_basics.model
-from cs336_basics.model import annotated_scaled_dot_product_attention
+
 from cs336_basics.optimizer import AdamW
 from cs336_basics.model import BasicsTransformerLM
 from cs336_systems.utils import BenchmarkReporter, BenchmarkRow
-
-cs336_basics.model.scaled_dot_product_attention = annotated_scaled_dot_product_attention
 
 
 
@@ -276,6 +273,7 @@ def main():
     parser.add_argument('--profile', action="store_true")
     parser.add_argument('--profile_mode', choices=['inference', 'train'], default='inference')
     parser.add_argument('--profile_steps', type=int, default=1)
+    parser.add_argument('--nvtx_attention', action="store_true")
 
     args = parser.parse_args()
  
@@ -290,6 +288,12 @@ def main():
     reporter = None
     if args.out_jsonl:
         reporter = BenchmarkReporter(args.out_jsonl, args.out_md)
+
+    if args.nvtx_attention:
+        import cs336_basics.model
+        from cs336_basics.model import annotated_scaled_dot_product_attention
+        cs336_basics.model.scaled_dot_product_attention = annotated_scaled_dot_product_attention
+
 
 
     if args.profile:
