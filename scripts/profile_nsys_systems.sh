@@ -22,19 +22,13 @@ for MODEL in "${MODELS[@]}"; do
     echo ">>> Profiling model=${MODEL}, context_length=${CONTEXT_LENGTH}"
     echo ">>> Output: ${OUT_DIR}/${OUT_NAME}.nsys-rep"
 
-#   uv run nsys profile \
-#     -o ${OUT_DIR}/${OUT_NAME} \
-#     --force-overwrite=true \
-#     --trace=cuda,nvtx \
-#     --sample=none \
-#     --cpuctxsw=none \
-#     python cs336_systems/benchmark.py \
-#       --model-size ${MODEL} \
-#       --context-length ${CONTEXT_LENGTH} \
-
-
-
-    uv run python cs336_systems/benchmark.py \
+  uv run nsys profile \
+    -o ${OUT_DIR}/${OUT_NAME} \
+    --force-overwrite=true \
+    --trace=cuda,nvtx \
+    --sample=none \
+    --cpuctxsw=none \
+    python cs336_systems/benchmark.py \
       --model_size ${MODEL} \
       --context_length ${CONTEXT_LENGTH} \
 
