@@ -189,10 +189,10 @@ def run_profile_workload(args, device: torch.device):
     with nvtx_range("warmup"):
         for _ in range(args.num_warmup_steps):
             if args.profile_mode == "inference":
-                with nvtx_range("step"):
+                with nvtx_range("forward"):
                     logits = model(x)
             else:
-                with nvtx_range("step"):
+                with nvtx_range("foward"):
                     model.zero_grad(set_to_none=True)
                     logits = model(x)
                 
@@ -214,10 +214,10 @@ def run_profile_workload(args, device: torch.device):
     # Profile steps
     for _ in range(args.profile_steps):
         if args.profile_mode == "inference":
-            with nvtx_range("step"):
+            with nvtx_range("forward"):
                 logits = model(x)
         else:
-            with nvtx_range("step"):
+            with nvtx_range("forward"):
                 model.zero_grad(set_to_none=True)
                 logits = model(x)
             
