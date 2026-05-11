@@ -46,9 +46,9 @@ clear
 #     --trace=cuda,nvtx \
 #     --sample=none \
 #     --cpuctxsw=none \
-#     python cs336_systems/benchmark.py \
-#         --model_size="large" --context_length=128 \
-#         --profile --profile_mode="inference"
+    # python cs336_systems/benchmark.py \
+    #     --model_size="large" --context_length=128 \
+    #     --profile --profile_mode="inference"
 
 # Full train step
 # uv run nsys profile \
@@ -75,10 +75,41 @@ clear
 
 # Benchmarking Mixed Precision
 
-# 3c
-uv run python3 cs336_systems/benchmark.py \
-    --out_jsonl="runs/amp.jsonl" \
-    --out_md="runs/amp.md" \
-    --sweep \
-    --sweep_contexts 128 \
-    --amp bf16
+# # 3c
+# uv run python3 cs336_systems/benchmark.py \
+#     --out_jsonl="runs/amp.jsonl" \
+#     --out_md="runs/amp.md" \
+#     --sweep \
+#     --sweep_contexts 128 \
+#     --amp bf16
+
+
+# Problem 4 Memory Profiling
+
+# 4a - Forward only
+python cs336_systems/benchmark.py \
+    --model_size="large" \
+    --profile --profile_mode="inference" \
+    --mem-profile --mem-out runs/mem_large_inf
+
+# 4a - Full training step
+python cs336_systems/benchmark.py \
+    --model_size="large" \
+    --profile --profile_mode="train" \
+    --mem-profile --mem-out runs/mem_large_train
+
+
+# 4c - Mixed precision forward only
+python cs336_systems/benchmark.py \
+    --model_size="large" \
+    --profile --profile_mode="inference" \
+    --mem-profile --mem-out runs/mem_large_inf_amp \
+    --amp fp16
+
+
+# 4c - AMP full train step
+python cs336_systems/benchmark.py \
+    --model_size="large" \
+    --profile --profile_mode="train" \
+    --mem-profile --mem-out runs/mem_large_train_amp \
+    --amp fp16
