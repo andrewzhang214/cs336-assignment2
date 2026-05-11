@@ -183,7 +183,7 @@ def run_sweep(args, reporter, device: torch.device):
     for model_size in args.sweep_models.split(','):
         for context_length in args.sweep_contexts.split(','):
             args.model_size = model_size
-            args.context_length = context_length
+            args.context_length = int(context_length)
             run_one_setting(args, reporter, device)
 
 
@@ -312,9 +312,10 @@ def main():
         cs336_basics.model.scaled_dot_product_attention = annotated_scaled_dot_product_attention
 
 
-    if device.type == "cuda" and args.amp is not "none":
+    if device.type == "cuda" and args.amp != "none":
         dtype = torch_dtype_from_string(args.amp)
         cm = torch.autocast(device_type="cuda", dtype=dtype)
+        print(">> AMP is activated")
     else:
         cm = nullcontext()
 

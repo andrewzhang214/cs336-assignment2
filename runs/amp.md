@@ -1,0 +1,22 @@
+| model_size   |   batch_size |   vocab_size |   context_length | mode     |   num_warmup_steps |   num_measure_steps |   mean_ms |   std_ms | device   |
+|:-------------|-------------:|-------------:|-----------------:|:---------|-------------------:|--------------------:|----------:|---------:|:---------|
+| small        |            4 |        10000 |              128 | forward  |                  5 |                  10 |     0.015 |        0 | cuda     |
+| small        |            4 |        10000 |              128 | backward |                  5 |                  10 |     0.012 |        0 | cuda     |
+| medium       |            4 |        10000 |              128 | forward  |                  5 |                  10 |     0.03  |        0 | cuda     |
+| medium       |            4 |        10000 |              128 | backward |                  5 |                  10 |     0.022 |        0 | cuda     |
+| large        |            4 |        10000 |              128 | forward  |                  5 |                  10 |     0.056 |        0 | cuda     |
+| large        |            4 |        10000 |              128 | backward |                  5 |                  10 |     0.033 |        0 | cuda     |
+| xl           |            4 |        10000 |              128 | forward  |                  5 |                  10 |   nan     |      nan | cuda     |
+| xl           |            4 |        10000 |              128 | backward |                  5 |                  10 |   nan     |      nan | cuda     |
+| 2.7B         |            4 |        10000 |              128 | forward  |                  5 |                  10 |   nan     |      nan | cuda     |
+| 2.7B         |            4 |        10000 |              128 | backward |                  5 |                  10 |   nan     |      nan | cuda     |
+| small        |            4 |        10000 |              128 | forward  |                  5 |                  10 |     0.013 |        0 | cuda     |
+| small        |            4 |        10000 |              128 | backward |                  5 |                  10 |     0.009 |        0 | cuda     |
+| medium       |            4 |        10000 |              128 | forward  |                  5 |                  10 |     0.026 |        0 | cuda     |
+| medium       |            4 |        10000 |              128 | backward |                  5 |                  10 |     0.017 |        0 | cuda     |
+| large        |            4 |        10000 |              128 | forward  |                  5 |                  10 |     0.039 |        0 | cuda     |
+| large        |            4 |        10000 |              128 | backward |                  5 |                  10 |     0.026 |        0 | cuda     |
+| xl           |            4 |        10000 |              128 | forward  |                  5 |                  10 |   nan     |      nan | cuda     |
+| xl           |            4 |        10000 |              128 | backward |                  5 |                  10 |   nan     |      nan | cuda     |
+| 2.7B         |            4 |        10000 |              128 | forward  |                  5 |                  10 |   nan     |      nan | cuda     |
+| 2.7B         |            4 |        10000 |              128 | backward |                  5 |                  10 |   nan     |      nan | cuda     |

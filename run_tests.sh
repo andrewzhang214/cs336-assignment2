@@ -80,5 +80,5 @@ uv run python3 cs336_systems/benchmark.py \
     --out_jsonl="runs/amp.jsonl" \
     --out_md="runs/amp.md" \
     --sweep \
-    --sweep-contexts 128 \
+    --sweep_contexts 128 \
     --amp bf16
