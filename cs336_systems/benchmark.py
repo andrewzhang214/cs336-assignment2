@@ -13,6 +13,7 @@ a better default for benchmarking than time.time()).
 
 import argparse
 from contextlib import contextmanager
+from contextlib import nullcontext
 import time
 
 import numpy as np
@@ -33,6 +34,16 @@ MODEL_SPECS = {
     "xl":       dict(d_model=1600, d_ff=6400,  num_layers=48, num_heads=25),
     "2.7B":     dict(d_model=2560, d_ff=10240, num_layers=32, num_heads=32),
 }
+
+def torch_dtype_from_string(s: str) -> torch.dtype:
+    s = s.lower()
+    if s in ("fp32", "float32"):
+        return torch.float32
+    if s in ("fp16", "float16"):
+        return torch.float16
+    if s in ("bf16", "bfloat16"):
+        return torch.bfloat16
+    raise ValueError(f"Unknown dtype: {s}")
 
 def create_model(args, device: torch.device):
     # Create model
@@ -192,7 +203,34 @@ def run_profile_workload(args, device: torch.device):
                 with nvtx_range("forward"):
                     logits = model(x)
             else:
-                with nvtx_range("foward"):
+                with nvtx_range("step"):
+                    with nvtx_range("foward"):
+                        model.zero_grad(set_to_none=True)
+                        logits = model(x)
+                    
+                    with nvtx_range("loss"):
+                        loss = torch.nn.functional.cross_entropy(
+                            input=logits.reshape(-1, logits.size(-1)),
+                            target=y.reshape(-1)
+                        )
+                    
+                    with nvtx_range("backward"):
+                        loss.backward()
+
+                    with nvtx_range("optim_step"):
+                        optim.step()
+
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+
+    # Profile steps
+    for _ in range(args.profile_steps):
+        if args.profile_mode == "inference":
+            with nvtx_range("forward"):
+                logits = model(x)
+        else:
+            with nvtx_range("step"):
+                with nvtx_range("forward"):
                     model.zero_grad(set_to_none=True)
                     logits = model(x)
                 
@@ -207,31 +245,6 @@ def run_profile_workload(args, device: torch.device):
 
                 with nvtx_range("optim_step"):
                     optim.step()
-
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
-
-    # Profile steps
-    for _ in range(args.profile_steps):
-        if args.profile_mode == "inference":
-            with nvtx_range("forward"):
-                logits = model(x)
-        else:
-            with nvtx_range("forward"):
-                model.zero_grad(set_to_none=True)
-                logits = model(x)
-            
-            with nvtx_range("loss"):
-                loss = torch.nn.functional.cross_entropy(
-                    input=logits.reshape(-1, logits.size(-1)),
-                    target=y.reshape(-1)
-                )
-            
-            with nvtx_range("backward"):
-                loss.backward()
-
-            with nvtx_range("optim_step"):
-                optim.step()
                 
         if torch.cuda.is_available():
             torch.cuda.synchronize()
@@ -275,6 +288,9 @@ def main():
     parser.add_argument('--profile_steps', type=int, default=1)
     parser.add_argument('--nvtx_attention', action="store_true")
 
+    # AMP hook
+    parser.add_argument("--amp", choices=["none", "bf16", "fp16"], default="none")
+
     args = parser.parse_args()
  
 
@@ -295,15 +311,21 @@ def main():
         cs336_basics.model.scaled_dot_product_attention = annotated_scaled_dot_product_attention
 
 
-
-    if args.profile:
-        run_profile_workload(args, device)
-
-    elif args.sweep:
-        run_sweep(args, reporter, device)
-
+    if device.type == "cuda" and args.amp is not "none":
+        dtype = torch_dtype_from_string(args.amp)
+        cm = torch.autocast(device_type="cuda", dtype=dtype)
     else:
-        run_one_setting(args, reporter, device)
+        cm = nullcontext()
+
+    with cm:
+        if args.profile:
+            run_profile_workload(args, device)
+
+        elif args.sweep:
+            run_sweep(args, reporter, device)
+
+        else:
+            run_one_setting(args, reporter, device)
 
     
     # Render result to md file

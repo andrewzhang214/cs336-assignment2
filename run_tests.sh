@@ -62,12 +62,23 @@ clear
 #         --profile --profile_mode="train"
 
 # # 2e Profile attention
-uv run nsys profile \
-    -o "runs/nsys_e_attn_large_s128" \
-    --force-overwrite=true \
-    --trace=cuda,nvtx \
-    --sample=none \
-    --cpuctxsw=none \
-    python cs336_systems/benchmark.py \
-        --model_size="large" --context_length=128 \
-        --profile --profile_mode="inference" --nvtx_attention
+# uv run nsys profile \
+#     -o "runs/nsys_e_attn_large_s128" \
+#     --force-overwrite=true \
+#     --trace=cuda,nvtx \
+#     --sample=none \
+#     --cpuctxsw=none \
+#     python cs336_systems/benchmark.py \
+#         --model_size="large" --context_length=128 \
+#         --profile --profile_mode="inference" --nvtx_attention
+
+
+# Benchmarking Mixed Precision
+
+# 3c
+uv run python3 cs336_systems/benchmark.py \
+    --out_jsonl="runs/amp.jsonl" \
+    --out_md="runs/amp.md" \
+    --sweep \
+    --sweep-contexts 128 \
+    --amp bf16
