@@ -224,6 +224,15 @@ def run_profile_workload(args, device: torch.device):
                 torch.cuda.synchronize()
 
     # Profile steps
+
+    # Mem profiling enabled
+    mem_enabled = (args.mem_profile) and (device.type == "cuda")
+
+    if mem_enabled:
+        torch.cuda.synchronize()
+        torch.cuda.memory._record_memory_history(max_entries=args.mem_max_entries)
+
+
     for _ in range(args.profile_steps):
         if args.profile_mode == "inference":
             with nvtx_range("forward"):
@@ -249,6 +258,13 @@ def run_profile_workload(args, device: torch.device):
         if torch.cuda.is_available():
             torch.cuda.synchronize()
 
+    if mem_enabled:
+        torch.cuda.synchronize()
+        out_prefix = getattr(args, "mem_out", "runs/memory_snapshot")
+        out_path = f"{out_prefix}_{args.profile_mode}_s{args.context_length}.pickle"
+        torch.cuda.memory._dump_snapshot(out_path)
+        torch.cuda.memory._record_memory_history(enabled=None)
+        print(f"[mem-profile] dumped snapshot: {out_path}")
 
 
 
@@ -288,6 +304,11 @@ def main():
     parser.add_argument('--profile_mode', choices=['inference', 'train'], default='inference')
     parser.add_argument('--profile_steps', type=int, default=1)
     parser.add_argument('--nvtx_attention', action="store_true")
+
+    # Memory profiling
+    parser.add_argument('--mem-profile', action="store_true")
+    parser.add_argument("--mem-out", type=str, default="runs/memory_snapshot")
+    parser.add_argument('--mem-max-entries', type=int, default=1_000_000)
 
     # AMP hook
     parser.add_argument("--amp", choices=["none", "bf16", "fp16"], default="none")
