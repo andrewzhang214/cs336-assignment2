@@ -277,6 +277,7 @@ def main():
     # Sweeper
     parser.add_argument('--sweep', action="store_true")
     parser.add_argument('--sweep_models', type=str, default="small,medium,large,xl,2.7B")
+    parser.add_argument('--sweep_contexts', type=str, default="128,256,512,1024")
 
     # Reporter
     parser.add_argument('--out_jsonl', type=str, default=None)
