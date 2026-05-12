@@ -87,10 +87,10 @@ clear
 # Problem 4 Memory Profiling
 
 # 4a - Forward only
-# uv run python cs336_systems/benchmark.py \
-#     --model_size="large" \
-#     --profile --profile_mode="inference" \
-#     --mem-profile --mem-out runs/mem_large_inf
+uv run python cs336_systems/benchmark.py \
+    --model_size="large" \
+    --profile --profile_mode="inference" \
+    --mem-profile --mem-out runs/mem_large_inf
 
 # # 4a - Full training step
 # uv run python cs336_systems/benchmark.py \
@@ -107,9 +107,9 @@ clear
 #     --amp bf16
 
 
-# 4c - AMP full train step
-uv run python cs336_systems/benchmark.py \
-    --model_size="large" \
-    --profile --profile_mode="train" \
-    --mem-profile --mem-out runs/mem_large_train_amp \
-    --amp bf16
+# # 4c - AMP full train step
+# uv run python cs336_systems/benchmark.py \
+#     --model_size="large" \
+#     --profile --profile_mode="train" \
+#     --mem-profile --mem-out runs/mem_large_train_amp \
+#     --amp bf16
