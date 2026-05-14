@@ -68,6 +68,10 @@ class AttentionRow():
     b_avg_ms: str
     b_std_ms: str
 
+    f_soln: str
+    b_soln: str
+    mem_soln: str
+
     mem_before_bwd_mb: str
     status: str # "ok" / "oom" / "error:<Type>"
 

@@ -1,6 +1,7 @@
 
 from argparse import ArgumentParser
 from pathlib import Path
+from typing import Callable
 
 
 import numpy as np
@@ -12,7 +13,7 @@ from cs336_basics.model import scaled_dot_product_attention
 from cs336_systems.utils import AttentionBenchmarkReporter, AttentionRow
 
 
-def emit_row(args, reporter, f_avg_time, f_std_time, b_avg_time, b_std_time, mem_before_bwd_mb, status, f=".3f"):
+def emit_row(args, reporter, f_avg_time, f_std_time, b_avg_time, b_std_time, mem_before_bwd_mb, f_soln, b_soln, mem_soln, status, f=".3f"):
     row = AttentionRow(
         batch_size=args.batch_size,
         d_model=args.d_model,
@@ -21,6 +22,9 @@ def emit_row(args, reporter, f_avg_time, f_std_time, b_avg_time, b_std_time, mem
         f_std_ms=format(f_std_time, f),
         b_avg_ms=format(b_avg_time, f),
         b_std_ms=format(b_std_time, f),
+        f_soln=format(f_soln, f),
+        b_soln=format(b_soln, f),
+        mem_soln=format(mem_soln, f),
         mem_before_bwd_mb=format(mem_before_bwd_mb, f),
         status=status
     )
@@ -71,6 +75,61 @@ def time_backward(
 
     return start.elapsed_time(end)
 
+def cuda_sync():
+    torch.cuda.synchronize()
+
+def time_forward_soln(
+    fn: Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor],
+    q: torch.Tensor, k: torch. Tensor, v: torch.Tensor,
+    iters: int
+) -> float:
+    # Use CUDA events
+    start = torch.cuda.Event(enable_timing=True)
+    end = torch.cuda.Event(enable_timing=True)
+
+    cuda_sync()
+    start.record()
+    for _ in range(iters):
+        cuda_sync()
+        _ = fn(q, k, v)
+        cuda_sync()
+    end.record()
+    cuda_sync()
+    return start.elapsed_time(end) / iters
+
+
+def time_backward_soln(
+    fn: Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor],
+    q: torch.Tensor, k: torch. Tensor, v: torch.Tensor,
+    iters: int
+) -> float:
+    start = torch.cuda.Event(enable_timing=True)
+    end = torch.cuda.Event(enable_timing=True)
+
+    total_ms = 0.0
+    for _ in range(iters):
+        cuda_sync()
+        out = fn(q, k, v)
+        loss = out.sum()
+        cuda_sync()
+
+        start.record()
+        loss.backward()
+        end.record()
+        cuda_sync()
+        total_ms += start.elapsed_time(end)
+
+        # clear grads for next iter
+        q.grad = None
+        k.grad = None
+        v.grad = None
+
+    return total_ms / iters
+
+
+
+
+
 
 def run_benchmark_split(args, dtype: torch.dtype):
 
@@ -115,8 +174,41 @@ def run_benchmark_split(args, dtype: torch.dtype):
             q.grad = None
             k.grad = None
             v.grad = None
+
+        ################################################################
+        # Run for solution too
+        ################################################################
+
+        def attn(q, k, v):
+            return scaled_dot_product_attention(q, k, v, mask=mask)
+
+        fn = attn
+
+        # warmup
+        for _ in range(args.num_warmup_steps):
+            cuda_sync()
+            out = fn(q, k, v)
+            cuda_sync()
+            out.sum().backward()
+            cuda_sync()
+            q.grad = None
+            k.grad = None
+            v.grad = None
         
-        return f_times, b_times, mem_before_bwd_mb
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
+        cuda_sync()
+
+        iters = args.num_measure_steps
+
+        fwd_soln = time_forward_soln(fn, q, k, v, iters)
+
+        # memory snapshot
+        mem_before_bwd_mb_soln = torch.cuda.memory_allocated() / (1024 ** 2)
+
+        bwd_soln = time_backward_soln(fn, q, k, v, iters)
+        
+        return f_times, b_times, mem_before_bwd_mb, fwd_soln, bwd_soln, mem_before_bwd_mb_soln
     
     except torch.OutOfMemoryError:
         del q, k, v, mask
@@ -131,9 +223,8 @@ def run_one_setting(args, dtype: torch.dtype, reporter):
     try:
         local_vars = {}
         # Run measurements and collect times
-        f_times, b_times, mem_before_bwd_mb = run_benchmark_split(args, dtype)
+        f_times, b_times, mem_before_bwd_mb, fwd_soln, bwd_soln, mem_soln = run_benchmark_split(args, dtype)
 
-        
 
         # Perform statistical analysis
         f_times = np.array(f_times)
@@ -142,11 +233,11 @@ def run_one_setting(args, dtype: torch.dtype, reporter):
         b_avg, b_std = np.mean(b_times), np.std(b_times)
 
         # Log the benchmark results with reporter
-        emit_row(args, reporter, f_avg, f_std, b_avg, b_std, mem_before_bwd_mb, "ok")
+        emit_row(args, reporter, f_avg, f_std, b_avg, b_std, mem_before_bwd_mb, fwd_soln, bwd_soln, mem_soln, "ok")
 
     except torch.OutOfMemoryError:
         print(f"OOM Error for model size: {args.model_size}")
-        emit_row(args, reporter, np.nan, np.nan, np.nan, np.nan, np.nan, "oom")
+        emit_row(args, reporter, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "oom")
 
 
 def run_sweep(args, dtype: torch.dtype, reporter: AttentionBenchmarkReporter):
