@@ -137,6 +137,14 @@ def run_benchmark_split(args, dtype: torch.dtype):
         
     device = torch.device("cuda")
     q = k = v = mask = None
+
+    def attn(q, k, v):
+        return scaled_dot_product_attention(q, k, v, mask=mask)
+
+    fn = attn
+
+    if args.compile:
+        fn = torch.compile(attn)
     
     try:
         # Initialize K,Q,V of size: [batch, seq, d_model]
@@ -179,10 +187,6 @@ def run_benchmark_split(args, dtype: torch.dtype):
         # Run for solution too
         ################################################################
 
-        def attn(q, k, v):
-            return scaled_dot_product_attention(q, k, v, mask=mask)
-
-        fn = attn
 
         # warmup
         for _ in range(args.num_warmup_steps):
@@ -211,7 +215,7 @@ def run_benchmark_split(args, dtype: torch.dtype):
         return f_times, b_times, mem_before_bwd_mb, fwd_soln, bwd_soln, mem_before_bwd_mb_soln
     
     except torch.OutOfMemoryError:
-        del q, k, v, mask
+        del q, k, v, mask, fn
         torch.cuda.empty_cache()
         raise
 
@@ -286,13 +290,13 @@ def main():
     # Reporter
     parser.add_argument('--out-dir', type=str, default="runs/pytorch_attention")
 
-
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA is required for this benchmark.")
-    
+    # Compilation
+    parser.add_argument("--compile", action="store_true")
 
     args = parser.parse_args()
 
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is required for this benchmark.")
 
     torch.manual_seed(args.seed)
     dtype_map = {"float32": torch.float32, "float16": torch.float16, "bfloat16": torch.bfloat16}

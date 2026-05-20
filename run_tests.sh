@@ -118,3 +118,15 @@ clear
 # Problem 5 Attention profiling
 uv run python cs336_systems/bench_pytorch_attention.py \
     --sweep
+
+# Problem 6 Compile
+
+# 6a
+uv run python cs336_systems/bench_pytorch_attention.py \
+    --sweep --compile
+
+# 6b
+uv run python cs336_systems/benchmark.py \
+    --out_jsonl="runs/compiled_bench.jsonl" \
+    --out_md="runs/compiled_bench.md" \
+    --model_size = "xl" --compile

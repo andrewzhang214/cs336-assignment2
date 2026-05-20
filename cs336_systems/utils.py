@@ -20,6 +20,8 @@ class BenchmarkRow():
     mean_ms: str
     std_ms: str
 
+    impl: str # "compiled / eager"
+
     device: str
 
 

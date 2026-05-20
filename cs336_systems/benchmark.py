@@ -58,10 +58,15 @@ def create_model(args, device: torch.device):
         rope_theta=args.rope_theta
     ).to(device)
     model.train()
+
+    if args.compile:
+        model = torch.compile(model)
+
+
     return model
 
 
-def create_optimizer(model: BasicsTransformerLM):
+def create_optimizer(model):
     optim = AdamW(params=model.parameters())
     return optim
 
@@ -89,7 +94,7 @@ def nvtx_range(name: str):
         nvtx.range_pop()
 
 
-def measure_forward_backward(model: BasicsTransformerLM, optim: AdamW, x: torch.Tensor, y: torch.Tensor):
+def measure_forward_backward(model, optim: AdamW, x: torch.Tensor, y: torch.Tensor):
 
     t0 = time.perf_counter()
 
@@ -148,7 +153,8 @@ def emit_row(args, reporter, mode: str, device: torch.device, avg_time, std_time
         num_measure_steps=args.num_measure_steps,
         mean_ms=format(avg_time, f),
         std_ms=format(std_time, f),
-        device=str(device)
+        device=str(device),
+        impl="compiled" if args.compile else "eager"
     )
     if reporter is not None:
         reporter.append(row)
@@ -314,6 +320,9 @@ def main():
 
     # AMP hook
     parser.add_argument("--amp", choices=["none", "bf16", "fp16"], default="none")
+
+    # Compile
+    parser.add_argument("--compile", action="store_true")
 
     args = parser.parse_args()
  
