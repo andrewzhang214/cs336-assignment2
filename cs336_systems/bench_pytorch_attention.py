@@ -32,6 +32,7 @@ def emit_row(args, reporter, f_avg_time, f_std_time, b_avg_time, b_std_time, mem
 
 
 def time_forward(
+        fn,
         q: torch.Tensor, 
         k: torch.Tensor,
         v: torch.Tensor,
@@ -45,7 +46,7 @@ def time_forward(
     # Run attn
     torch.cuda.synchronize()
     start.record()
-    _ = scaled_dot_product_attention(q, k, v, mask=mask)
+    _ = fn(q, k, v, mask=mask)
     end.record()
     torch.cuda.synchronize()
 
@@ -54,6 +55,7 @@ def time_forward(
 
 
 def time_backward(
+        fn,
         q: torch.Tensor,
         k: torch.Tensor,
         v: torch.Tensor,
@@ -63,7 +65,7 @@ def time_backward(
     end = torch.cuda.Event(enable_timing=True)
 
     # Run forward
-    out = scaled_dot_product_attention(q, k, v, mask=mask)
+    out = fn(q, k, v, mask=mask)
     loss = out.sum()
 
     # Begin recording
@@ -156,10 +158,10 @@ def run_benchmark_split(args, dtype: torch.dtype):
         # Run warmup
         for _ in range(args.num_warmup_steps):
             # Run forward
-            time_forward(q, k, v, mask)
+            time_forward(fn, q, k, v, mask)
 
             # Run backward
-            time_backward(q, k, v, mask)
+            time_backward(fn, q, k, v, mask)
 
             q.grad = None
             k.grad = None
@@ -169,7 +171,7 @@ def run_benchmark_split(args, dtype: torch.dtype):
         f_times, b_times = [], []
         for _ in range(args.num_measure_steps):
             # Run forward
-            f_times.append(time_forward(q, k, v, mask))
+            f_times.append(time_forward(fn, q, k, v, mask))
 
 
         # Collect memory
@@ -177,7 +179,7 @@ def run_benchmark_split(args, dtype: torch.dtype):
 
         for _ in range(args.num_measure_steps):
             # Run backward
-            b_times.append(time_backward(q, k, v, mask))
+            b_times.append(time_backward(fn, q, k, v, mask))
 
             q.grad = None
             k.grad = None
