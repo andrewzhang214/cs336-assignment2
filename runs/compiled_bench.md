@@ -1,0 +1,4 @@
+| model_size   |   batch_size |   vocab_size |   context_length | mode     |   num_warmup_steps |   num_measure_steps |   mean_ms |   std_ms | impl     | device   |
+|:-------------|-------------:|-------------:|-----------------:|:---------|-------------------:|--------------------:|----------:|---------:|:---------|:---------|
+| xl           |            4 |        10000 |              128 | forward  |                  5 |                  10 |     0.122 |        0 | compiled | cuda     |
+| xl           |            4 |        10000 |              128 | backward |                  5 |                  10 |     0.007 |        0 | compiled | cuda     |

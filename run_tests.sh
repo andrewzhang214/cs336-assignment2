@@ -129,4 +129,4 @@ uv run python cs336_systems/bench_pytorch_attention.py \
 uv run python cs336_systems/benchmark.py \
     --out_jsonl="runs/compiled_bench.jsonl" \
     --out_md="runs/compiled_bench.md" \
-    --model_size = "xl" --compile
+    --model_size="xl" --compile

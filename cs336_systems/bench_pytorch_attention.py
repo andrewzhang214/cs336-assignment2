@@ -15,7 +15,7 @@ from cs336_systems.utils import AttentionBenchmarkReporter, AttentionRow
 
 def emit_row(args, reporter, f_avg_time, f_std_time, b_avg_time, b_std_time, mem_before_bwd_mb, f_soln, b_soln, mem_soln, status, f=".3f"):
     row = AttentionRow(
-        batch_size=args.batch_size,
+        batch_size=args.batch,
         d_model=args.d_model,
         seq_length=args.seq_length,
         f_avg_ms=format(f_avg_time, f),
@@ -83,7 +83,8 @@ def cuda_sync():
 def time_forward_soln(
     fn: Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor],
     q: torch.Tensor, k: torch. Tensor, v: torch.Tensor,
-    iters: int
+    iters: int,
+    mask
 ) -> float:
     # Use CUDA events
     start = torch.cuda.Event(enable_timing=True)
@@ -93,7 +94,7 @@ def time_forward_soln(
     start.record()
     for _ in range(iters):
         cuda_sync()
-        _ = fn(q, k, v)
+        _ = fn(q, k, v, mask)
         cuda_sync()
     end.record()
     cuda_sync()
@@ -103,7 +104,8 @@ def time_forward_soln(
 def time_backward_soln(
     fn: Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor],
     q: torch.Tensor, k: torch. Tensor, v: torch.Tensor,
-    iters: int
+    iters: int,
+    mask
 ) -> float:
     start = torch.cuda.Event(enable_timing=True)
     end = torch.cuda.Event(enable_timing=True)
@@ -111,7 +113,7 @@ def time_backward_soln(
     total_ms = 0.0
     for _ in range(iters):
         cuda_sync()
-        out = fn(q, k, v)
+        out = fn(q, k, v, mask)
         loss = out.sum()
         cuda_sync()
 
@@ -140,7 +142,7 @@ def run_benchmark_split(args, dtype: torch.dtype):
     device = torch.device("cuda")
     q = k = v = mask = None
 
-    def attn(q, k, v):
+    def attn(q, k, v, mask):
         return scaled_dot_product_attention(q, k, v, mask=mask)
 
     fn = attn
@@ -193,7 +195,7 @@ def run_benchmark_split(args, dtype: torch.dtype):
         # warmup
         for _ in range(args.num_warmup_steps):
             cuda_sync()
-            out = fn(q, k, v)
+            out = fn(q, k, v, mask)
             cuda_sync()
             out.sum().backward()
             cuda_sync()
@@ -207,12 +209,12 @@ def run_benchmark_split(args, dtype: torch.dtype):
 
         iters = args.num_measure_steps
 
-        fwd_soln = time_forward_soln(fn, q, k, v, iters)
+        fwd_soln = time_forward_soln(fn, q, k, v, iters, mask)
 
         # memory snapshot
         mem_before_bwd_mb_soln = torch.cuda.memory_allocated() / (1024 ** 2)
 
-        bwd_soln = time_backward_soln(fn, q, k, v, iters)
+        bwd_soln = time_backward_soln(fn, q, k, v, iters, mask)
         
         return f_times, b_times, mem_before_bwd_mb, fwd_soln, bwd_soln, mem_before_bwd_mb_soln
     
@@ -277,7 +279,7 @@ def main():
 
     # Data parameters
     parser.add_argument('--seed', type=int, default=42) # For producing random K,Q,V
-    parser.add_argument("dtype", type=str, default="float32")
+    parser.add_argument("--dtype", type=str, default="float32")
 
     # Measure parameters
     parser.add_argument('--num-warmup-steps', type=int, default=5)
