@@ -81,7 +81,7 @@ def cuda_sync():
     torch.cuda.synchronize()
 
 def time_forward_soln(
-    fn: Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor],
+    fn,
     q: torch.Tensor, k: torch. Tensor, v: torch.Tensor,
     iters: int,
     mask
@@ -102,7 +102,7 @@ def time_forward_soln(
 
 
 def time_backward_soln(
-    fn: Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor],
+    fn,
     q: torch.Tensor, k: torch. Tensor, v: torch.Tensor,
     iters: int,
     mask
