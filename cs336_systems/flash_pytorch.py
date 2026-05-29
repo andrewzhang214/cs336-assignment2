@@ -5,6 +5,27 @@ from einops import rearrange, einsum, reduce
 import torch
 
 
+def backward(L, q, k, v, o, dO):
+
+    # q (batch, Nq, d)
+    # k (batch, Nk, d)
+    # v (batch, Nk, d)
+
+    # L (batch, Nq)
+    # dO (batch, Nq, d)
+
+    # Return dQ, dK, dV
+
+    batch, Nq, d = q.shape
+
+    scale = 1 / math.sqrt(d)
+
+    S = einsum(q, k, "... Nq d, ... Nk d -> batch Nq Nk") * scale
+    
+
+
+
+
 
 class FlashAttention2Pytorch(torch.autograd.Function):
 
@@ -40,8 +61,8 @@ class FlashAttention2Pytorch(torch.autograd.Function):
             # Initialize mi (batch, Bq)  Running max per row (Changes as we go across seq)
             m = torch.full((batch, Bq), -float("inf"), device=device, dtype=torch.float32)
 
-            for j in range(Tk): # Iterates over sets of key and value vectors and now iteratively creates O horizontally across the seq
-                # Load Kj and Vj (batch, Bk, d)
+            for j in range(Tk): # Iterates over sets of key and value vectors and now iteratively creates O horizontally across the seq (O shape stays the same and essentially is the running average over the value vectors as we iterate over them)
+                # Load Kj and Vj (batch, Bk, d) 
                 k_tile = k[:, j*Bk:(j+1)*Bk, :]
                 v_tile = v[:, j*Bk:(j+1)*Bk, :]
 
@@ -82,12 +103,17 @@ class FlashAttention2Pytorch(torch.autograd.Function):
 
         # Save ctx
         ctx.save_for_backward(L, q, k, v, o)
+
+        # Memory complexity
+        # L: O(batch * seq_len)
+        # q, k, v: O(batch * seq_len * d)
+        # o: O(batch * seq_len * d)
         
         return o
 
 
-
-
     @staticmethod
     def backward(ctx):
+        # We need to calculate dQ dK and dV, we receive dO upstream
+
         raise NotImplementedError
