@@ -20,7 +20,8 @@ def flash_fwd_kernel(
     scale,
     D: tl.contstexpr,
     Q_TILE_SIZE: tl.constexpr,
-    K_TILE_SIZE: tl.constexpr
+    K_TILE_SIZE: tl.constexpr,
+    is_causal: tl.constexpr
 ):
     # Program indices
     query_tile_index = tl.program_id(0)
@@ -81,14 +82,38 @@ def flash_fwd_kernel(
 
     Q_tile = tl.load(Q_block_ptr, boundary_check=(0, 1), padding_option="zero") # (Q_tile_size, D)
 
-    for _ in range(tl.cdiv(N_KEYS, K_TILE_SIZE)):
+    # Form bq_index
+    if is_causal:
+        Bq_index = tl.arange(query_tile_index * Q_TILE_SIZE, (1+query_tile_index) * Q_TILE_SIZE)
+
+    for i in range(tl.cdiv(N_KEYS, K_TILE_SIZE)): # (Go through each of the sets of keys)
         # Load Q K V tile
         K_tile = tl.load(K_block_ptr, boundary_check=(0, 1), padding_option="zero") # (K_tile_size, D)
         V_tile = tl.load(V_block_ptr, boundary_check=(0, 1), padding_option="zero") # (K_tile_size, D)
 
         # Compute S: (batch, Bq, Bd) Representing the scores for this tile
         # This is EXACT since we're loading the whole row and column (K and Q) per tile
-        S = tl.dot(Q_tile, tl.trans(K_tile)) * scale # (Q_TILE_SIZE, K_TILE_SIZE)
+
+        
+
+        # Perform masking
+        if is_causal:
+            # Form mask
+
+            ## Form Bk index vector
+            Bk_index = tl.arange(i * K_TILE_SIZE, (1+i) * K_TILE_SIZE)
+
+            ## Compare to create Bq * Bk mask
+            mask = Bq_index[:, None] < Bk_index[None, :]
+
+            # Mask out S
+            S = tl.where(mask, -1e6, tl.dot(Q_tile, tl.trans(K_tile)) * scale)
+        
+        else:
+            S = tl.dot(Q_tile, tl.trans(K_tile)) * scale
+
+
+
         m_prev = m
         m = tl.maximum(m, tl.max(S, dim=-1)) # (Q_TILE_SIZE,)
         P_partial = tl.exp(S - m[:, None]) # (Q_TILE_SIZE, K_TILE_SIZE)
@@ -147,12 +172,14 @@ class FlashAttention2Triton(torch.autograd.Function):
             scale,
             D,
             Q_TILE_SIZE,
-            K_TILE_SIZE
+            K_TILE_SIZE,
+            is_causal
         )
 
 
         # Save parameters for backward pass
         ctx.save_for_backward(L, q, k, v, o)
+        ctx.is_causal = is_causal
 
         return o
     

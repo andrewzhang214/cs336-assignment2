@@ -11,6 +11,8 @@ def backward(L, q, k, v, o, dO):
     # k (batch, Nk, d)
     # v (batch, Nk, d)
 
+    # o (batch, Nq, d)
+
     # L (batch, Nq)
     # dO (batch, Nq, d)
 
@@ -20,8 +22,20 @@ def backward(L, q, k, v, o, dO):
 
     scale = 1 / math.sqrt(d)
 
-    S = einsum(q, k, "... Nq d, ... Nk d -> batch Nq Nk") * scale
-    
+    S = einsum(q, k, "... Nq d, ... Nk d -> ... Nq Nk") * scale
+    P = torch.exp(S - L[:, :, None]) 
+
+    dV = einsum(P, dO, "... Nq Nk, ... Nq d -> ... Nk d")
+    dP = einsum(dO, v, "... Nq d, ... Nk d -> ... Nq Nk")
+
+    # Recompute D (rowsum(O * dO))
+    D = torch.sum(o * dO, dim=-1) # (batch, Nq,)
+    dS = P * (dP - D[:, :, None])
+
+    dQ = einsum(dS, k, "... Nq Nk, ... Nk d -> ... Nq d") * scale
+    dK = einsum(dS, q, "... Nq Nk, ... Nq d -> ... Nk d") * scale
+
+    return dQ, dK, dV
 
 
 
@@ -113,7 +127,12 @@ class FlashAttention2Pytorch(torch.autograd.Function):
 
 
     @staticmethod
-    def backward(ctx):
+    def backward(ctx, dO):
         # We need to calculate dQ dK and dV, we receive dO upstream
+        L, q, k, v, o = ctx.saved_tensors
+        compiled_backward = torch.compile(backward)
 
-        raise NotImplementedError
+
+        dq, dk, dv = compiled_backward(L, q, k, v, o, dO)
+        
+        return dq, dk, dv
