@@ -22,10 +22,18 @@ def backward(L, q, k, v, o, dO, is_causal):
     # Return dQ, dK, dV
 
     batch, Nq, d = q.shape
+    batch, Nk, d = k.shape
 
     scale = 1 / math.sqrt(d)
 
     S = einsum(q, k, "... Nq d, ... Nk d -> ... Nq Nk") * scale
+    if is_causal:
+        # Create causal mask
+        q_idx = torch.arange(Nq, device=q.device)[:, None]
+        k_idx = torch.arange(Nk, device=q.device)[None, :]
+        causal_mask = k_idx > q_idx
+        S = S.masked_fill(causal_mask, -torch.inf)
+
     P = torch.exp(S - L[:, :, None]) 
 
     dV = einsum(P, dO, "... Nq Nk, ... Nq d -> ... Nk d")
@@ -35,11 +43,13 @@ def backward(L, q, k, v, o, dO, is_causal):
     D = torch.sum(o * dO, dim=-1) # (batch, Nq,)
     dS = P * (dP - D[:, :, None])
 
+    if is_causal:
+        dS = dS.masked_fill(causal_mask, 0.0)
+
     dQ = einsum(dS, k, "... Nq Nk, ... Nk d -> ... Nq d") * scale
     dK = einsum(dS, q, "... Nq Nk, ... Nq d -> ... Nk d") * scale
 
     return dQ, dK, dV
-
 
 
 
@@ -76,7 +86,7 @@ def flash_fwd_kernel(
 
     K_block_ptr = tl.make_block_ptr(
         K_ptr + batch_index * stride_kb,
-        shape=(N_QUERIES, D),
+        shape=(N_KEYS, D),
         strides=(stride_kk, stride_kd),
         offsets=(0, 0),
         block_shape=(K_TILE_SIZE, D),
@@ -85,7 +95,7 @@ def flash_fwd_kernel(
 
     V_block_ptr = tl.make_block_ptr(
         V_ptr + batch_index * stride_vb,
-        shape=(N_QUERIES, D),
+        shape=(N_KEYS, D),
         strides=(stride_vk, stride_vd),
         offsets=(0, 0),
         block_shape=(K_TILE_SIZE, D),
@@ -194,7 +204,7 @@ class FlashAttention2Triton(torch.autograd.Function):
 
         # Initialize empty O and L
         o = torch.empty(q.shape, device=q.device) # (..., N_QUERIES, D)
-        L = torch.empty((BATCH_SIZE, Q_TILE_SIZE), device=q.device)
+        L = torch.empty((BATCH_SIZE, N_QUERIES), device=q.device)
 
         # Call kernel
         flash_fwd_kernel[(math.ceil(N_QUERIES / Q_TILE_SIZE), BATCH_SIZE)](
@@ -204,7 +214,7 @@ class FlashAttention2Triton(torch.autograd.Function):
             k.stride(0), k.stride(1), k.stride(2),
             v.stride(0), v.stride(1), v.stride(2),
             o.stride(0), o.stride(1), o.stride(2),
-            L.stride(0), L.stride(2),
+            L.stride(0), L.stride(1),
             N_QUERIES, N_KEYS,
             scale,
             D,
