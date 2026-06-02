@@ -110,3 +110,51 @@ class AttentionBenchmarkReporter():
         df = pd.read_json(self.jsonl_path, lines=True)
         with self.md_path.open('w') as f:
             f.write(df.to_markdown(index=False))
+
+
+
+@dataclass
+class FlashRow():
+    seq_length: int
+    d_model: int
+    
+    f_ms: str
+    b_ms: str
+    e2e_ms: str
+
+    impl: str # "pytorch / triton"
+
+    status: str # "ok" / "oom" / "error:<Type>"
+
+
+
+
+class FlashBenchmarkReporter():
+
+    def __init__(
+            self,
+            jsonl_path: str | Path,
+            md_path: str | Path
+        ):
+        self.jsonl_path = Path(jsonl_path)
+        self.md_path = Path(md_path)
+
+        # Ensure directories exist
+        self.jsonl_path.parent.mkdir(parents=True, exist_ok=True)
+        self.md_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    def append(self, row: AttentionRow):
+
+        # Append to jsonl
+        with self.jsonl_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(asdict(row), ensure_ascii=False) + "\n")
+
+
+    def render_markdown(self):
+        # Write Markdown
+
+        # Refresh markdown file
+        # Load JSONL
+        df = pd.read_json(self.jsonl_path, lines=True)
+        with self.md_path.open('w') as f:
+            f.write(df.to_markdown(index=False))

@@ -8,7 +8,6 @@ import numpy as np
 import torch
 
 
-
 from cs336_basics.model import scaled_dot_product_attention
 from cs336_systems.utils import AttentionBenchmarkReporter, AttentionRow
 
