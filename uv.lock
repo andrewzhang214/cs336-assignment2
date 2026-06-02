@@ -186,6 +186,7 @@ dependencies = [
     { name = "tabulate" },
     { name = "torch" },
     { name = "tqdm" },
+    { name = "triton" },
     { name = "ty" },
     { name = "wandb" },
 ]
@@ -203,6 +204,7 @@ requires-dist = [
     { name = "tabulate", specifier = ">=0.10.0" },
     { name = "torch", specifier = "~=2.11.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
+    { name = "triton", specifier = ">=3.6.0" },
     { name = "ty", specifier = ">=0.0.29" },
     { name = "wandb", specifier = ">=0.19.7" },
 ]

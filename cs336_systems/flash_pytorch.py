@@ -148,4 +148,4 @@ class FlashAttention2Pytorch(torch.autograd.Function):
 
         dq, dk, dv = compiled_backward(L, q, k, v, o, dO, ctx.is_causal)
         
-        return dq, dk, dv
+        return dq, dk, dv, None

@@ -13,6 +13,8 @@ export UV_CACHE_DIR=/workspace/.uv-cache
 export UV_LINK_MODE=copy
 
 cd /workspace/cs336-assignment2
+
+# Dependencies
 uv sync
 
 

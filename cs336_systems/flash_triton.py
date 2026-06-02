@@ -65,7 +65,7 @@ def flash_fwd_kernel(
     stride_lb, stride_lq,
     N_QUERIES, N_KEYS,
     scale,
-    D: tl.contstexpr,
+    D: tl.constexpr,
     Q_TILE_SIZE: tl.constexpr,
     K_TILE_SIZE: tl.constexpr,
     is_causal: tl.constexpr
@@ -131,7 +131,7 @@ def flash_fwd_kernel(
 
     # Form bq_index
     if is_causal:
-        Bq_index = tl.arange(query_tile_index * Q_TILE_SIZE, (1+query_tile_index) * Q_TILE_SIZE)
+        Bq_index = query_tile_index * Q_TILE_SIZE + tl.arange(0, Q_TILE_SIZE)
 
     for i in range(tl.cdiv(N_KEYS, K_TILE_SIZE)): # (Go through each of the sets of keys)
         # Load Q K V tile
@@ -148,7 +148,7 @@ def flash_fwd_kernel(
             # Form mask
 
             ## Form Bk index vector
-            Bk_index = tl.arange(i * K_TILE_SIZE, (1+i) * K_TILE_SIZE)
+            Bk_index = i * K_TILE_SIZE + tl.arange(0, K_TILE_SIZE)
 
             ## Compare to create Bq * Bk mask
             mask = Bq_index[:, None] < Bk_index[None, :]
@@ -162,14 +162,14 @@ def flash_fwd_kernel(
 
 
         m_prev = m
-        m = tl.maximum(m, tl.max(S, dim=-1)) # (Q_TILE_SIZE,)
+        m = tl.maximum(m, tl.max(S, axis=-1)) # (Q_TILE_SIZE,)
         P_partial = tl.exp(S - m[:, None]) # (Q_TILE_SIZE, K_TILE_SIZE)
 
         alpha = tl.exp(m_prev - m) # (Q_TILE_SIZE,)
-        l = alpha * l + tl.sum(P_partial, dim=-1) # (Q_TILE_SIZE,)
+        l = alpha * l + tl.sum(P_partial, axis=-1) # (Q_TILE_SIZE,)
 
         acc = alpha[:, None] * acc
-        acc = tl.dot(P_partial.to(V_tile.dtype), V_tile, acc=acc).to() # (Q_TILE_SIZE, D)
+        acc = tl.dot(P_partial.to(V_tile.dtype), V_tile, acc=acc) # (Q_TILE_SIZE, D)
 
         # Advance pointers for K and V
         K_block_ptr = K_block_ptr.advance((K_TILE_SIZE, 0))
@@ -240,4 +240,4 @@ class FlashAttention2Triton(torch.autograd.Function):
 
         dq, dk, dv = compiled_backward(L, q, k, v, o, dO, ctx.is_causal)
         
-        return dq, dk, dv
+        return dq, dk, dv, None
