@@ -13,6 +13,12 @@ uv run pytest -k test_flash_forward_pass_pytorch
 
 # Benchmarking
 
+uv run python cs336_systems/benchmark_pytorch_vs_flash.py \
+    --out_jsonl="runs/torch_vs_triton_bench.jsonl" \
+    --out_md="runs/torch_vs_triton_bench.md" \
+    --dtype="float32"
+
 # uv run python cs336_systems/benchmark_pytorch_vs_flash.py \
 #     --out_jsonl="runs/torch_vs_triton_bench.jsonl" \
 #     --out_md="runs/torch_vs_triton_bench.md" \
+#     --dtype="bfloat16"
