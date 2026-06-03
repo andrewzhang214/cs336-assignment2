@@ -93,6 +93,7 @@ class AttentionBenchmarkReporter():
         # Ensure directories exist
         self.jsonl_path.parent.mkdir(parents=True, exist_ok=True)
         self.md_path.parent.mkdir(parents=True, exist_ok=True)
+
     
     def append(self, row: AttentionRow):
 
@@ -142,6 +143,13 @@ class FlashBenchmarkReporter():
         # Ensure directories exist
         self.jsonl_path.parent.mkdir(parents=True, exist_ok=True)
         self.md_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def reset(self):
+        # Delete if exists
+        self.jsonl_path.unlink(missing_ok=True)
+
+        # Recreate empty file
+        self.jsonl_path.touch()
     
     def append(self, row: AttentionRow):
 

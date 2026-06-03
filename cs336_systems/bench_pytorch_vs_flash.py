@@ -78,7 +78,7 @@ def run_benchmark_split(args, q, k, v):
     def bwd_only():
         torch.autograd.grad(o, (q_, k_, v_), grad_outputs=do, retain_graph=True)
     
-    b_ms = float(triton.test.do_bench(bwd_only))
+    b_ms = float(triton.testing.do_bench(bwd_only))
 
     ### Time e2e
     # Need to temp allow gradients
@@ -95,7 +95,7 @@ def run_benchmark_split(args, q, k, v):
         doy = torch.rand_like(oy)
         torch.autograd.grad(oy, (qx, kx, vx), grad_outputs=doy, retain_graph=False)
     
-    e2e_ms = float(triton.test.do_bench(e2e))
+    e2e_ms = float(triton.testing.do_bench(e2e))
 
     
     return f_ms, b_ms, e2e_ms
@@ -163,7 +163,8 @@ def main():
     torch.manual_seed(args.seed)
 
 
-    reporter = FlashBenchmarkReporter(args.jsonl_path, args.out_md)
+    reporter = FlashBenchmarkReporter(args.out_jsonl, args.out_md)
+    reporter.reset()
 
     dtype_map = {"float32": torch.float32, "bfloat16": torch.bfloat16}
     dtype = dtype_map[args.dtype]
@@ -171,6 +172,7 @@ def main():
 
     SEQ_LENGTHS = pow_2_list(128, 65536)
     D_LENGTHS = pow_2_list(16, 128)
+
 
     # Iterate through seq and d lengths
     for seq in SEQ_LENGTHS:
