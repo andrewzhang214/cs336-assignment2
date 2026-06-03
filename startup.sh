@@ -31,8 +31,8 @@ chmod 600 /root/.ssh/id_ed25519
 
 git pull
 
-# nsys systems
-apt update
-apt install -y nsight-systems-2025.6.3
+# # nsys systems
+# apt update
+# apt install -y nsight-systems-2025.6.3
 
 source /root/.bashrc
