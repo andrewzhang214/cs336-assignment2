@@ -115,8 +115,12 @@ def run_one_setting(args, q, k, v, reporter):
         emit_row(args, reporter, f_ms, b_ms, e2e_ms, args.impl, "ok")
 
     except torch.OutOfMemoryError:
-        print(f"OOM Error for model size: {args.d}")
+        print(f"OOM Error for model size: {args.d} and seq_len: {args.seq}")
         emit_row(args, reporter, np.nan, np.nan, np.nan, args.impl, "oom")
+    
+    except Exception as e:
+        print(f"Error for model size:: {args.d} and seq_len: {args.seq} with error: {e}")
+        emit_row(args, reporter, np.nan, np.nan, np.nan, args.impl, "error")
 
 
 def main():
