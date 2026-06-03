@@ -115,9 +115,9 @@ clear
 #     --amp bf16
 
 
-# Problem 5 Attention profiling
-uv run python cs336_systems/bench_pytorch_attention.py \
-    --sweep
+# # Problem 5 Attention profiling
+# uv run python cs336_systems/bench_pytorch_attention.py \
+#     --sweep
 
 # Problem 6 Compile
 
