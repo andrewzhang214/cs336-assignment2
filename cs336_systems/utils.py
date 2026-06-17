@@ -166,3 +166,54 @@ class FlashBenchmarkReporter():
         df = pd.read_json(self.jsonl_path, lines=True)
         with self.md_path.open('w') as f:
             f.write(df.to_markdown(index=False))
+
+
+@dataclass
+class DDPCommRow:
+    backend: str
+    device: str
+    data_size_bytes: int
+    world_size: int
+    warmup_steps: int
+    measure_steps: int
+    mean_ms: float
+    std_ms: float
+    max_ms: float
+
+
+class DDPCommBenchmarkReporter():
+
+    def __init__(
+            self,
+            jsonl_path: str | Path,
+            md_path: str | Path
+        ):
+        self.jsonl_path = Path(jsonl_path)
+        self.md_path = Path(md_path)
+
+        # Ensure directories exist
+        self.jsonl_path.parent.mkdir(parents=True, exist_ok=True)
+        self.md_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def reset(self):
+        # Delete if exists
+        self.jsonl_path.unlink(missing_ok=True)
+
+        # Recreate empty file
+        self.jsonl_path.touch()
+    
+    def append(self, row: DDPCommRow):
+
+        # Append to jsonl
+        with self.jsonl_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(asdict(row), ensure_ascii=False) + "\n")
+
+
+    def render_markdown(self):
+        # Write Markdown
+
+        # Refresh markdown file
+        # Load JSONL
+        df = pd.read_json(self.jsonl_path, lines=True)
+        with self.md_path.open('w') as f:
+            f.write(df.to_markdown(index=False))
